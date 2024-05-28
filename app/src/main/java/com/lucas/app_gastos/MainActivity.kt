@@ -1,7 +1,7 @@
 package com.lucas.app_gastos
 
-
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.widget.Button
 import android.widget.EditText
@@ -11,12 +11,23 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.firebase.database.*
 
 class MainActivity : AppCompatActivity() {
 
+    data class Expense(
+        val name: String = "",
+        val value: Double = 0.0
+    ) {
+        override fun toString(): String {
+            return "$name - R$ $value"
+        }
+    }
+
     private lateinit var expensesRecyclerView: RecyclerView
     private lateinit var expenseAdapter: ExpenseAdapter
-    private val expensesList = mutableListOf<String>()
+    private val expensesList = mutableListOf<Expense>()
+    private lateinit var firebaseManager: FirebaseManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,11 +39,21 @@ class MainActivity : AppCompatActivity() {
         expensesRecyclerView.adapter = expenseAdapter
         expensesRecyclerView.layoutManager = LinearLayoutManager(this)
 
+        firebaseManager = FirebaseManager()
+
+        firebaseManager.getAllExpenses { expenses ->
+            expensesList.clear()
+            expensesList.addAll(expenses)
+            this.expenseAdapter.notifyDataSetChanged()
+            updateTotal()
+        }
+
         // Configura o FloatingActionButton para mostrar o diálogo de adição de despesas
         val fab: FloatingActionButton = findViewById(R.id.fab)
         fab.setOnClickListener {
             showAddExpenseDialog()
         }
+
     }
 
     private fun showAddExpenseDialog() {
@@ -52,9 +73,11 @@ class MainActivity : AppCompatActivity() {
             val expenseName = expenseNameInput.text.toString()
             val expenseValue = expenseValueInput.text.toString()
             if (expenseName.isNotEmpty() && expenseValue.isNotEmpty()) {
-                val expense = "$expenseName - R$ $expenseValue"
+                val expense = Expense(expenseName, expenseValue.toDouble())
+                //expensesList.add(expense)
                 expenseAdapter.addExpense(expense)
-                updateTotal() // Atualiza o total das despesas
+                firebaseManager.saveExpense(expense) // Salva a despesa no Firebase
+                updateTotal()
                 dialog.dismiss()
             }
         }
@@ -66,11 +89,39 @@ class MainActivity : AppCompatActivity() {
     private fun updateTotal() {
         var total = 0.0
         for (expense in expensesList) {
-            val expenseValue = expense.substringAfterLast("R$").trim().toDoubleOrNull()
-            if (expenseValue != null) {
-                total += expenseValue
-            }
+            total += expense.value
         }
         findViewById<TextView>(R.id.total_expenses_textview).text = "Total: R$ $total"
+    }
+
+    class FirebaseManager {
+        companion object {
+            private const val TAG = "FirebaseManager"
+        }
+
+        private val database = FirebaseDatabase.getInstance()
+        private val expensesRef = database.getReference("expenses")
+
+        fun saveExpense(expense: Expense) {
+            val expenseRef = expensesRef.push()
+            expenseRef.setValue(expense)
+        }
+
+        fun getAllExpenses(callback: (List<Expense>) -> Unit) {
+            expensesRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(dataSnapshot: DataSnapshot) {
+                    val expenses = mutableListOf<Expense>()
+                    for (expenseSnapshot in dataSnapshot.children) {
+                        val expense = expenseSnapshot.getValue(Expense::class.java)
+                        expense?.let { expenses.add(it) }
+                    }
+                    callback(expenses)
+                }
+
+                override fun onCancelled(databaseError: DatabaseError) {
+                    Log.e(TAG, "Erro ao ler os dados do banco de dados", databaseError.toException())
+                }
+            })
+        }
     }
 }

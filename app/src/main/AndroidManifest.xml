@@ -13,13 +13,19 @@
         android:theme="@style/Theme.App_Gastos"
         tools:targetApi="31">
         <activity
+            android:name=".MainActivity"
+            android:exported="false" />
+        <activity
+            android:name=".SignUpScreen"
+            android:exported="false" />
+        <activity
             android:name=".ExpenseAdapter"
             android:exported="false" />
         <activity
             android:name=".ExpensiveAdapter"
             android:exported="false" />
         <activity
-            android:name=".MainActivity"
+            android:name=".LoginScreen"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

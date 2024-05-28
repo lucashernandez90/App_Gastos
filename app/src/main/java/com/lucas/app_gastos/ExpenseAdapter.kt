@@ -6,8 +6,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
-class ExpenseAdapter(private val expenses: MutableList<String>) : RecyclerView.Adapter<ExpenseAdapter.ExpenseViewHolder>() {
-
+class ExpenseAdapter(private val expenses: MutableList<MainActivity.Expense>) : RecyclerView.Adapter<ExpenseAdapter.ExpenseViewHolder>() {
     class ExpenseViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val expenseTextView: TextView = itemView.findViewById(android.R.id.text1)
     }
@@ -18,15 +17,14 @@ class ExpenseAdapter(private val expenses: MutableList<String>) : RecyclerView.A
     }
 
     override fun onBindViewHolder(holder: ExpenseViewHolder, position: Int) {
-        holder.expenseTextView.text = expenses[position]
+        holder.expenseTextView.text = expenses[position].toString()
     }
 
     override fun getItemCount() = expenses.size
 
-    fun addExpense(expense: String) {
+    fun addExpense(expense: MainActivity.Expense) {
         expenses.add(expense)
-        notifyItemInserted(expenses.size - 1)
+        notifyItemInserted(expenses.size)
     }
-
 
 }
