@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "867585004721",
+    "project_id": "app-gastos-e525d",
+    "storage_bucket": "app-gastos-e525d.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:867585004721:android:454ae9646d7637ced67e90",
+        "android_client_info": {
+          "package_name": "com.lucas.app_gastos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBBNlYSs8S6yd9fXvJXn0HT4nQEIOiprJQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
