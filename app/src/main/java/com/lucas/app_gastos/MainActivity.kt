@@ -6,11 +6,13 @@ import android.view.LayoutInflater
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 
 class MainActivity : AppCompatActivity() {
@@ -41,11 +43,20 @@ class MainActivity : AppCompatActivity() {
 
         firebaseManager = FirebaseManager()
 
-        firebaseManager.getAllExpenses { expenses ->
-            expensesList.clear()
-            expensesList.addAll(expenses)
-            this.expenseAdapter.notifyDataSetChanged()
-            updateTotal()
+        // Verifica se o usuário está autenticado
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            Log.d("MainActivity", "Usuário autenticado: ${currentUser.uid}")
+            firebaseManager.getAllExpenses(currentUser.uid) { expenses ->
+                expensesList.clear()
+                expensesList.addAll(expenses)
+                this.expenseAdapter.notifyDataSetChanged()
+                updateTotal()
+            }
+        } else {
+            Toast.makeText(this, "Usuário não autenticado", Toast.LENGTH_SHORT).show()
+            Log.e("MainActivity", "Usuário não autenticado")
+            // Redirecionar para a tela de login se necessário
         }
 
         // Configura o FloatingActionButton para mostrar o diálogo de adição de despesas
@@ -53,7 +64,6 @@ class MainActivity : AppCompatActivity() {
         fab.setOnClickListener {
             showAddExpenseDialog()
         }
-
     }
 
     private fun showAddExpenseDialog() {
@@ -74,9 +84,14 @@ class MainActivity : AppCompatActivity() {
             val expenseValue = expenseValueInput.text.toString()
             if (expenseName.isNotEmpty() && expenseValue.isNotEmpty()) {
                 val expense = Expense(expenseName, expenseValue.toDouble())
-                //expensesList.add(expense)
                 expenseAdapter.addExpense(expense)
-                firebaseManager.saveExpense(expense) // Salva a despesa no Firebase
+                val currentUser = FirebaseAuth.getInstance().currentUser
+                if (currentUser != null) {
+                    firebaseManager.saveExpense(currentUser.uid, expense) // Salva a despesa no Firebase
+                    Log.d("MainActivity", "Despesa salva: $expense")
+                } else {
+                    Log.e("MainActivity", "Usuário não autenticado ao tentar salvar despesa")
+                }
                 updateTotal()
                 dialog.dismiss()
             }
@@ -102,13 +117,20 @@ class MainActivity : AppCompatActivity() {
         private val database = FirebaseDatabase.getInstance()
         private val expensesRef = database.getReference("expenses")
 
-        fun saveExpense(expense: Expense) {
-            val expenseRef = expensesRef.push()
-            expenseRef.setValue(expense)
+        fun saveExpense(userId: String, expense: Expense) {
+            val userExpensesRef = expensesRef.child(userId).push()
+            userExpensesRef.setValue(expense)
+                .addOnSuccessListener {
+                    Log.d(TAG, "Despesa salva com sucesso: $expense")
+                }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "Erro ao salvar despesa: ${e.message}")
+                }
         }
 
-        fun getAllExpenses(callback: (List<Expense>) -> Unit) {
-            expensesRef.addListenerForSingleValueEvent(object : ValueEventListener {
+        fun getAllExpenses(userId: String, callback: (List<Expense>) -> Unit) {
+            val userExpensesRef = expensesRef.child(userId)
+            userExpensesRef.addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     val expenses = mutableListOf<Expense>()
                     for (expenseSnapshot in dataSnapshot.children) {
